@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rotating Doughnut</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: monospace;
+            white-space: pre;
+            overflow: hidden;
+            margin: 0;
+        }
+        .inputs{
+            position:absolute;
+            top:100px;
+            left:400px;
+            display: flex;
+            flex-direction: column;
+            height:200px;
+            justify-content: space-around;
+            color:white;
+        }
+        .input{
+            height:25px;
+            width: 130px;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <pre id="output"></pre>
+    <div class = "inputs">
+        <div>
+            light x:
+            <input id ="X" type="number" class = "input" value="-10">
+        </div>
+        <div>
+            light y:
+            <input id ="Y" type="number" class = "input" value="-20">
+        </div>
+        <div>
+            light z:
+            <input id ="Z" type="number" class = "input" value="10">
+        </div>
+    </div>
+    
+    <script>
+        const rad1 = 8.5, rad2 = 3.5;
+        const mat = 30, mid = 15;
+        let light = {x:  -10, y: -20, z: 10};
+        let A = Array.from({length: mat}, () => Array.from({length: 2 * mat}, () => [0, -99999]));
+
+        let X_input = document.getElementById('X');
+        let Y_input = document.getElementById('Y');
+        let Z_input = document.getElementById('Z');
+        X_input.addEventListener('input',(e)=>{
+            light.x = X_input.value;
+            main();
+        });
+        Y_input.addEventListener('input',(e)=>{
+            light.y = Y_input.value;
+            main();
+        });
+        Z_input.addEventListener('input',(e)=>{
+            light.z = Z_input.value;
+            main();
+        });
+        class Pos {
+            constructor(x = 0, y = 0, z = 0) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+            }
+
+            add(a) {
+                return new Pos(this.x + a.x, this.y + a.y, this.z + a.z);
+            }
+
+            sub(a) {
+                return new Pos(this.x - a.x, this.y - a.y, this.z - a.z);
+            }
+        }
+
+        function roundoff(a) {
+            return Math.round(a);
+        }
+
+        function rzc(p, anglez = 10) {
+            let a = p.x, b = p.y;
+            let ang = anglez * Math.PI / 180;
+            p.x = a * Math.cos(ang) - b * Math.sin(ang);
+            p.y = a * Math.sin(ang) + b * Math.cos(ang);
+        }
+
+        function rxc(p, anglex = 10) {
+            let a = p.y, b = p.z;
+            let ang = anglex * Math.PI / 180;
+            p.y = a * Math.cos(ang) - b * Math.sin(ang);
+            p.z = a * Math.sin(ang) + b * Math.cos(ang);
+        }
+
+        function ryc(p, angley = 6) {
+            let a = p.x, b = p.z;
+            let ang = angley * Math.PI / 180;
+            p.x = a * Math.cos(ang) - b * Math.sin(ang);
+            p.z = a * Math.sin(ang) + b * Math.cos(ang);
+        }
+
+        function angle(a, b) {
+            let num = (a.x * b.x + a.y * b.y + a.z * b.z);
+            let dis = Math.pow(b.x, 2) + Math.pow(b.y, 2) + Math.pow(b.z, 2);
+            let den = 4 * dis;
+            return num / den;
+        }
+
+        function main() {
+            let B2 = [];
+            for (let i = 0; i < 360; i += 6) {
+                let p = new Pos(0, rad2 * Math.sin(i * Math.PI / 180), rad2 * Math.cos(i * Math.PI / 180));
+                rzc(p, 90);
+                B2.push(p);
+            }
+
+            let B = Array.from({length: 120}, () => Array(61).fill(new Pos()));
+            let n = 0;
+            let n2 = B2.length;
+            let rotate = 3;
+
+            for (let i = 0; i < 360; i += rotate) {
+                B[n][0] = new Pos(rad1 * Math.cos(i * Math.PI / 180), rad1 * Math.sin(i * Math.PI / 180), 0);
+
+                for (let j = 0; j < n2; j++) {
+                    B[n][j + 1] = B2[j].add(B[n][0]);
+                    rzc(B2[j], rotate);
+                    if (B[n][j + 1].z >= 0) {
+                        let t = -angle(B[n][j + 1].sub(B[n][0]), B[n][j + 1].sub(light));
+                        let val = t * 100;
+                        let x = roundoff(B[n][j + 1].y) + mid;
+                        let y = roundoff(2 * B[n][j + 1].x) + mid * 2;
+                        if (t > 2.8) A[x][y][0] = 10;
+                        else if (t > 2.3) A[x][y][0] = 9;
+                        else if (t > 1.8) A[x][y][0] = 8;
+                        else if (t > 1.2) A[x][y][0] = 7;
+                        else if (t > 0.7) A[x][y][0] = 6;
+                        else if (t > -0.3) A[x][y][0] = 5;
+                        else if (t > -0.8) A[x][y][0] = 4;
+                        else if (t > -1) A[x][y][0] = 3;
+                        else if (t > -1.4) A[x][y][0] = 2;
+                        else A[x][y][0] = 1;
+                    }
+                }
+                n++;
+            }
+
+            function render() {
+                let output = '';
+                for (let i = 0; i < mat; i++) {
+                    for (let j = 0; j < 2 * mat; j++) {
+                        switch (A[i][j][0]) {
+                            case 10: output += '@'; break;
+                            case 9: output += '$'; break;
+                            case 8: output += '#'; break;
+                            case 7: output += '='; break;
+                            case 6: output += '*'; break;
+                            case 5: output += '!'; break;
+                            case 4: output += ';'; break;
+                            case 3: output += ':'; break;
+                            case 2: output += "'"; break;
+                            case 1: output += '.'; break;
+                            default: output += ' ';
+                        }
+                        A[i][j][0] = 0;
+                        A[i][j][1] = -99999;
+                    }
+                    output += '\n';
+                }
+                document.getElementById('output').textContent = output;
+            }
+            let offsetX,offsetY
+            document.getElementById('output').addEventListener('mousedown',(e)=>{
+                e.preventDefault();
+                offsetX=e.clientX;
+                offsetY=e.clientY;
+                document.addEventListener('mousemove',moveMouse);
+                document.addEventListener('mouseup',mouseUp);
+            });
+            function moveMouse(e){
+                animate(e.clientX-offsetX,e.clientY-offsetY);
+                offsetX=e.clientX;
+                offsetY=e.clientY;
+            }
+            function mouseUp(){
+                document.removeEventListener('mousemove',moveMouse);
+                document.removeEventListener('mouseup',mouseUp);
+            }
+            let c = 0;
+            function animate(angleX, angleY) {
+                for (let d = 0; d < n; d++) {
+                    for (let e = 0; e < n2 + 1; e++) {
+                        rxc(B[d][e],-angleY/1.5);
+                        ryc(B[d][e],-angleX/1.5);
+                        let x = roundoff(B[d][e].y) + mid;
+                        let y = roundoff(2 * B[d][e].x) + mid * 2;
+                        if (e != 0 && A[x][y][1] < Math.floor(B[d][e].z * 100)) {
+                            A[x][y][1] = Math.floor(B[d][e].z * 100);
+                            let t = -angle(B[d][e].sub(B[d][0]), B[d][e].sub(light));
+                            t *= 100;
+                            if (t > 2.5) A[x][y][0] = 10;
+                            else if (t > 2) A[x][y][0] = 9;
+                            else if (t > 1.6) A[x][y][0] = 8;
+                            else if (t > 1) A[x][y][0] = 7;
+                            else if (t > 0.6) A[x][y][0] = 6;
+                            else if (t > 0) A[x][y][0] = 5;
+                            else if (t > -0.5) A[x][y][0] = 4;
+                            else if (t > -1) A[x][y][0] = 3;
+                            else if (t > -1.5) A[x][y][0] = 2;
+                            else A[x][y][0] = 1;
+                        }
+                    }
+                }
+                render();
+                //if (c < 600) requestAnimationFrame(animate);
+            }
+
+            animate(-60,-30);
+        }
+
+        window.onload = main;
+    </script>
+</body>
+</html>
